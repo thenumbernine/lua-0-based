@@ -16,11 +16,11 @@ table = require '0-based'
 
 runall[[
 t = table()
-return #t
+print(#t)
 table.insert(t, 'a')
-return #t
-return t[0]
-return t[1]
+print(#t)
+print(t[0])
+print(t[1])
 table.insert(t, 'b')
 table.insert(t, 'c')
 for i,v in ipairs(t) do print(i,v) end
