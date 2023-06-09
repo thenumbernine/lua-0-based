@@ -1,8 +1,17 @@
 -- what does this do?
--- it replaces table.insert, table.remove, and ipairs to be 0-based instead of 1-based
+-- it replaces .insert, .remove, and ipairs to be 0-based instead of 1-based
+
 local table = require 'ext.table'
 
-local super = table
+local function getargoftype(reqtype, i, ...)
+	local n = select('#', ...)
+	local t = select(i, ...)
+	if type(t) ~= reqtype then
+		local ttype = i > n and 'no value' or type(t)
+		error("bad argument #1 to 'insert' ("..reqtype.." expected, got "..ttype..")")
+	end
+	return t
+end
 
 local zerotable = {}
 for k,v in pairs(table) do
@@ -12,7 +21,7 @@ end
 zerotable.__index = zerotable 
 
 function zerotable.new(...)
-	return setmetatable(super.new(...), zerotable)
+	return setmetatable(table.new(...), zerotable)
 end
 
 -- zerotable() creates a new table
@@ -33,19 +42,9 @@ function zerotable.__len(t)
 	return l+1
 end
 
-local function getargoftype(reqtype, i, ...)
-	local n = select('#', ...)
-	local t = select(i, ...)
-	if type(t) ~= reqtype then
-		local ttype = i > n and 'no value' or type(t)
-		error("bad argument #1 to 'insert' ("..reqtype.." expected, got "..ttype..")")
-	end
-	return t
-end
-
 --[[
-	table.insert(t, v) = inserts v at the end of t (0-based)
-	table.insert(t, i, v) = inserts v at index i in t, pushing all elements up one (0-based)
+.insert(t, v) = inserts v at the end of t (0-based)
+.insert(t, i, v) = inserts v at index i in t, pushing all elements up one (0-based)
 --]]
 function zerotable.insert(...)
 	local t = getargoftype('table', 1, ...)
@@ -88,6 +87,37 @@ function zerotable.remove(...)
 	return o
 end
 
+-- .concat(table, separator, start_inclusive, end_exclusive)
+function zerotable.concat(...)
+	local t,sep,i,j = ...
+	local n = select('#', ...)
+	if n < 4 then j = #t end
+	if n < 3 then i = 0 end
+	if not sep then sep = '' end
+	local s = ''
+	local _sep = ''
+	for k=i,j-1 do
+		s = s .. _sep .. t[k]
+		_sep = sep
+	end
+	return s
+end
+
+-- TODO table.pack table.sort table.unpack
+
+-- reintroduces the old __ipairs functionality
+-- works with the ipairs() override below:
+function zerotable.__ipairs(t)
+	return function(t, i)
+		i = i + 1
+		local v = t[i]
+		if v == nil then return end
+		return i, v
+	end, t, -1
+end
+
+-- global environment changes:
+
 -- metatable.__ipairs is deprecated in 5.3, but the 5.3.3 ubuntu apt bundle is built with backwards compatability for 5.2 so it still exists
 -- TODO 5.2 ipairs compat test here?
 local oldipairs = ipairs
@@ -102,13 +132,20 @@ function ipairs(t)
 	return oldipairs(t)
 end
 
-function zerotable.__ipairs(t)
-	return function(t, i)
-		i = i + 1
-		local v = t[i]
-		if v == nil then return end
-		return i, v
-	end, t, -1
+-- [[ modify original table.insert and table.remove to call custom insert and remove if exists?
+for _,field in ipairs{'insert', 'remove'} do
+	local old = table[field]
+	local function new(...)
+		local t = ...
+		local f = t[field]
+		if f and f ~= new then
+			return f(...)
+		else
+			return old(...)
+		end
+	end
+	table[field] = new
 end
+--]]
 
 return zerotable
