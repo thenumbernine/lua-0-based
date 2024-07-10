@@ -3,6 +3,7 @@
 
 local table = require 'ext.table'
 
+-- syntax to match luaL_argerror:
 local function getargoftype(reqtype, i, ...)
 	local n = select('#', ...)
 	local t = select(i, ...)
@@ -34,10 +35,8 @@ setmetatable(zerotable, {
 -- returning the length of a 0-bsed table
 function zerotable.__len(t)
 	local l = rawlen(t)
-	if l == 0 then
-		if type(t[0]) == 'nil' then
-			return 0
-		end
+	if l == 0 and t[0] == nil then
+		return 0
 	end
 	return l+1
 end
@@ -55,9 +54,14 @@ function zerotable.insert(...)
 		t[l] =  v
 	elseif n == 3 then
 		local i, v = select(2, ...)
+		--[[
 		for j=l,i,-1 do
 			t[j+1] = t[j]
 		end
+		--]]
+		-- [[
+		table.move(t, i, l, i+1)
+		--]]
 		t[i] = v
 	else
 		error("wrong number of arguments to 'insert'")
@@ -78,9 +82,14 @@ function zerotable.remove(...)
 		local i = getargoftype('number', 2, ...)
 		if l > 0 then
 			o = t[i]
+			--[[
 			for j=i,l-1 do
 				t[j] = t[j+1]
 			end
+			--]]
+			-- [[
+			table.move(t, i+1, l, i)
+			--]]
 			t[l] = nil
 		end
 	end
