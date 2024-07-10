@@ -14,26 +14,26 @@ local function getargoftype(reqtype, i, ...)
 	return t
 end
 
-local zerotable = {}
+local ztable = {}
 for k,v in pairs(table) do
-	zerotable[k] = v
+	ztable[k] = v
 end
 
-zerotable.__index = zerotable 
+ztable.__index = ztable 
 
-function zerotable.new(...)
-	return setmetatable(table.new(...), zerotable)
+function ztable.new(...)
+	return setmetatable(table.new(...), ztable)
 end
 
--- zerotable() creates a new table
-setmetatable(zerotable, {
+-- ztable() creates a new table
+setmetatable(ztable, {
 	__call = function(t, ...)
-		return zerotable.new(...)
+		return ztable.new(...)
 	end,
 })
 
 -- returning the length of a 0-bsed table
-function zerotable.__len(t)
+function ztable.__len(t)
 	local l = rawlen(t)
 	if l == 0 and t[0] == nil then
 		return 0
@@ -45,9 +45,9 @@ end
 .insert(t, v) = inserts v at the end of t (0-based)
 .insert(t, i, v) = inserts v at index i in t, pushing all elements up one (0-based)
 --]]
-function zerotable.insert(...)
+function ztable.insert(...)
 	local t = getargoftype('table', 1, ...)
-	local l = zerotable.__len(t)
+	local l = ztable.__len(t)
 	local n = select('#', ...)
 	if n == 2 then
 		local v = select(2, ...)
@@ -68,9 +68,9 @@ function zerotable.insert(...)
 	end
 end
 
-function zerotable.remove(...)
+function ztable.remove(...)
 	local t = getargoftype('table', 1, ...)
-	local l = zerotable.__len(t)
+	local l = ztable.__len(t)
 	local n = select('#', ...)
 	local o
 	if n == 1 then
@@ -97,7 +97,7 @@ function zerotable.remove(...)
 end
 
 -- .concat(table, separator, start_inclusive, end_exclusive)
-function zerotable.concat(...)
+function ztable.concat(...)
 	local t,sep,i,j = ...
 	local n = select('#', ...)
 	if n < 4 then j = #t end
@@ -113,10 +113,31 @@ function zerotable.concat(...)
 end
 
 -- TODO table.pack table.sort table.unpack
+-- but how should unpack's indexes work?  0-based or 1-based, and if 0-based then what about select() or table.unpack() compatability?
+function ztable.sort(t, ...)
+	local n = ztable.__len(t)
+	if n == 0 then return t end
+	--[[ if i do this then i'm sorting {'a','b'} but internal sort still picks out a nill value somehow and crashes ...
+print(require 'ext.tolua'(t))
+	local minv, mini = ztable.inf(t)
+print(require 'ext.tolua'{mini=mini, minv=minv})
+	t[mini] = t[0]
+print(require 'ext.tolua'(t))
+	t[0] = nil
+print(require 'ext.tolua'(t))
+	table.sort(t, ...)
+print(require 'ext.tolua'(t))
+	t[0] = minv
+	return t
+	--]]
+	-- [[
+	return table.sort(t, ...)	-- ... this too... does table.sort use ipairs or something? half the time?
+	--]]
+end
 
 -- reintroduces the old __ipairs functionality
 -- works with the ipairs() override below:
-function zerotable.__ipairs(t)
+function ztable.__ipairs(t)
 	return function(t, i)
 		i = i + 1
 		local v = t[i]
@@ -157,4 +178,4 @@ for _,field in ipairs{'insert', 'remove'} do
 end
 --]]
 
-return zerotable
+return ztable
